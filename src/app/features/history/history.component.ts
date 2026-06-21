@@ -9,19 +9,31 @@ import { DraftSummary } from '../../core/models/contract';
   selector: 'app-history',
   imports: [CommonModule, RouterLink, DatePipe],
   template: `
-    <div class="card">
-      <h1>History</h1>
-      <p class="soft">All drafts created on this device.</p>
+    <div class="page-head">
+      <div>
+        <span class="eyebrow">Drafts</span>
+        <h1>History</h1>
+        <p class="soft">All incident drafts you have access to.</p>
+      </div>
+      <a class="primary-link" routerLink="/new">+ New report</a>
+    </div>
 
+    <div class="card list-card">
       @if (loading()) {
-        <p class="muted">Loading…</p>
+        <div class="empty">
+          <div class="spinner"></div>
+          <p>Loading drafts…</p>
+        </div>
       } @else if (drafts().length === 0) {
-        <p class="muted">No drafts yet. <a routerLink="/new">Create one →</a></p>
+        <div class="empty">
+          <p>No drafts yet.</p>
+          <a class="primary-link" routerLink="/new">Create your first report →</a>
+        </div>
       } @else {
-        <table class="tbl">
+        <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th>Draft</th>
               <th>Status</th>
               <th>Loop</th>
               <th>Updated</th>
@@ -31,14 +43,14 @@ import { DraftSummary } from '../../core/models/contract';
           <tbody>
             @for (d of drafts(); track d.draft_id) {
               <tr [class.dimmed]="deleting() === d.draft_id">
-                <td><code>{{ d.draft_id.slice(0, 8) }}…</code></td>
+                <td><code>{{ d.draft_id.slice(0, 8) }}</code></td>
                 <td>
                   <span class="status-pill" [class]="'s-' + d.status">{{ d.status }}</span>
                 </td>
-                <td>{{ d.iteration }}</td>
-                <td>{{ d.updated_at | date:'medium' }}</td>
+                <td class="mono">{{ d.iteration }}</td>
+                <td class="soft">{{ d.updated_at | date:'medium' }}</td>
                 <td class="actions">
-                  <a [routerLink]="['/draft', d.draft_id]">Open →</a>
+                  <a class="open" [routerLink]="['/draft', d.draft_id]">Open <span>→</span></a>
                   <button
                     class="link danger"
                     type="button"
@@ -54,38 +66,96 @@ import { DraftSummary } from '../../core/models/contract';
     </div>
   `,
   styles: [`
-    h1 { margin: 0 0 4px; font-size: 20px; }
-    .tbl {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
+    .page-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--space-5);
+      margin-bottom: var(--space-5);
     }
-    .tbl th, .tbl td {
-      text-align: left;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
+    .page-head h1 {
+      font-size: var(--fs-2xl);
+      margin: var(--space-1) 0 var(--space-1);
     }
-    .tbl th { font-weight: 600; color: var(--text-soft); font-size: 12px; }
-    .tbl a  { color: var(--blue); text-decoration: none; }
-    .status-pill {
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 11px;
+    .page-head p { color: var(--text-soft); }
+    .primary-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 14px;
+      border-radius: var(--radius);
+      background: var(--brand-soft);
+      color: var(--brand);
       font-weight: 600;
+      font-size: var(--fs-sm);
+      text-decoration: none;
+      transition: background 0.12s ease;
     }
-    .s-running         { background: var(--blue-soft);  color: var(--blue); }
-    .s-awaiting_user   { background: var(--amber-soft); color: var(--amber); }
-    .s-awaiting_manual { background: var(--red-soft);   color: var(--red); }
-    .s-done            { background: var(--green-soft); color: var(--green); }
+    .primary-link:hover { background: var(--brand-mid); }
 
-    .actions { display: flex; gap: 12px; align-items: center; }
+    .list-card { padding: 0; overflow: hidden; }
+
+    .empty {
+      padding: var(--space-8) var(--space-6);
+      text-align: center;
+      color: var(--text-soft);
+    }
+    .empty p { margin-bottom: var(--space-3); }
+    .spinner {
+      width: 24px; height: 24px;
+      margin: 0 auto var(--space-3);
+      border: 2.5px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    code {
+      font-family: var(--font-mono);
+      background: var(--surface-3);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      color: var(--text);
+    }
+    td.mono { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-soft); }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      border: 1px solid transparent;
+    }
+    .s-running         { background: var(--blue-soft);  color: var(--blue);  border-color: rgba(37, 99, 235, 0.15); }
+    .s-awaiting_user   { background: var(--amber-soft); color: var(--amber); border-color: rgba(180, 83, 9, 0.18); }
+    .s-awaiting_manual { background: var(--red-soft);   color: var(--red);   border-color: rgba(185, 28, 28, 0.18); }
+    .s-done            { background: var(--green-soft); color: var(--green); border-color: rgba(21, 128, 61, 0.18); }
+
+    .actions {
+      display: flex;
+      gap: var(--space-4);
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .actions .open {
+      color: var(--blue);
+      font-weight: 600;
+      font-size: var(--fs-sm);
+      text-decoration: none;
+    }
+    .actions .open span { transition: transform 0.12s ease; display: inline-block; }
+    .actions .open:hover span { transform: translateX(2px); }
     button.link {
       background: none; border: none; padding: 0; cursor: pointer;
-      font-size: 13px; color: var(--blue);
+      font-size: var(--fs-sm); color: var(--blue);
     }
     button.link.danger { color: var(--red); }
-    button.link:disabled { opacity: 0.5; cursor: default; }
+    button.link.danger:hover { text-decoration: underline; }
+    button.link:disabled { opacity: 0.4; cursor: default; }
     tr.dimmed { opacity: 0.4; }
   `],
 })

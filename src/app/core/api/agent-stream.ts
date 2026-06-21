@@ -1,8 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { AgentEvent, RunRequest } from '../models/contract';
+import { AuthService } from '../services/auth.service';
 
 /**
  * Run (or resume) the agent for a draft.
@@ -13,6 +14,8 @@ import { AgentEvent, RunRequest } from '../models/contract';
  */
 @Injectable({ providedIn: 'root' })
 export class AgentStream {
+  private auth = inject(AuthService);
+
   /**
    * Returns an Observable that emits typed AgentEvents until the server
    * closes the stream. Subscribers can unsubscribe to abort.
@@ -21,15 +24,21 @@ export class AgentStream {
     const url = `${environment.apiBaseUrl}/api/drafts/${draftId}/run`;
     const subject = new Subject<AgentEvent>();
     const ctrl = new AbortController();
+    const session = this.auth.session();
 
     (async () => {
       try {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        };
+        if (session) {
+          headers['X-User'] = session.username;
+          headers['X-Role'] = session.role;
+        }
         const res = await fetch(url, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'text/event-stream',
-          },
+          headers,
           body: JSON.stringify(body),
           signal: ctrl.signal,
         });

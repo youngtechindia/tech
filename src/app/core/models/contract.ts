@@ -37,6 +37,9 @@ export interface FieldSpec {
   guide_keywords?: string[];
   source_mode: SourceMode;
   guidance: string;
+  /** Inline definitions and classification rules used by the agent in place
+   *  of RAG over the long-form procedure document. May be multi-paragraph. */
+  domain_knowledge?: string;
   depends_on?: FieldDependency | null;
   /** Optional PDF heading group, e.g. "Section 2 – IMPACT DETAILS".
    *  When set, the FE renders this above the section header. */
@@ -48,6 +51,7 @@ export interface FieldSpec {
 export type FillSource = 'agent' | 'user_manual';
 
 export interface FieldFill {
+  // effective (legacy compat)
   value: unknown | null;
   confidence: number; // 0..1
   rationale: string;
@@ -55,6 +59,20 @@ export interface FieldFill {
   evidence_incident_refs: string[];
   source: FillSource;
   updated_at: string; // ISO timestamp
+  // AI snapshot (frozen on first agent fill)
+  ai_value?: unknown | null;
+  ai_confidence?: number;
+  ai_filled_at?: string | null;
+  // maker layer
+  maker_user_id?: string | null;
+  maker_value?: unknown | null;
+  maker_reason?: string | null;
+  maker_at?: string | null;
+  // checker layer
+  checker_user_id?: string | null;
+  checker_value?: unknown | null;
+  checker_reason?: string | null;
+  checker_at?: string | null;
 }
 
 // ---------- Follow-up question ----------
@@ -76,6 +94,8 @@ export type DraftStatus =
   | 'awaiting_manual'
   | 'done';
 
+export type WorkflowStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
 export interface Draft {
   draft_id: string;
   status: DraftStatus;
@@ -87,13 +107,23 @@ export interface Draft {
   unresolved_field_ids: string[];
   created_at: string;
   updated_at: string;
+  // Maker/checker workflow
+  workflow_status: WorkflowStatus;
+  maker_user_id?: string | null;
+  checker_user_id?: string | null;
+  submitted_at?: string | null;
+  decided_at?: string | null;
+  rejection_reason?: string | null;
 }
 
 export interface DraftSummary {
   draft_id: string;
   status: DraftStatus;
+  workflow_status: WorkflowStatus;
   iteration: number;
   title?: string | null;
+  maker_user_id?: string | null;
+  checker_user_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -109,7 +139,11 @@ export interface RunRequest {
 }
 
 export interface PatchFieldsRequest {
-  updates: Record<string, { value: unknown }>;
+  updates: Record<string, { value: unknown; reason?: string }>;
+}
+
+export interface RejectRequest {
+  reason: string;
 }
 
 export interface IngestRequest {

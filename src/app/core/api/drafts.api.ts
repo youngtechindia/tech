@@ -54,6 +54,19 @@ export class DraftsApi {
     return this.http.delete<void>(`${this.base}/api/drafts/${id}`);
   }
 
+  // ---- workflow (maker/checker) ----
+  submitForReview(id: string): Observable<Draft> {
+    return this.http.post<Draft>(`${this.base}/api/drafts/${id}/submit`, {});
+  }
+
+  approveDraft(id: string): Observable<Draft> {
+    return this.http.post<Draft>(`${this.base}/api/drafts/${id}/approve`, {});
+  }
+
+  rejectDraft(id: string, reason: string): Observable<Draft> {
+    return this.http.post<Draft>(`${this.base}/api/drafts/${id}/reject`, { reason });
+  }
+
   // ---- admin ----
   ingest(body: IngestRequest = {}): Observable<IngestResponse> {
     return this.http.post<IngestResponse>(

@@ -2,9 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, Input, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
+import { firstValueFrom } from 'rxjs';
+
 import { environment } from '../../../environments/environment';
+import { containsArabic, TranslateApi } from '../../core/api/translate.api';
 import { FieldFill, FieldSpec } from '../../core/models/contract';
+import { AuthService } from '../../core/services/auth.service';
 import { DraftService } from '../../core/services/draft.service';
+import { ReasonPromptService } from '../../core/services/reason-prompt.service';
+import { TranslationCompareService } from '../../core/services/translation-compare.service';
 
 @Component({
   selector: 'field-row',
@@ -92,6 +98,9 @@ import { DraftService } from '../../core/services/draft.service';
                   }
                 </span>
               }
+              <button class="link audit-link" (click)="toggleAudit()">
+                {{ showAudit() ? 'Hide audit' : 'Audit' }}
+              </button>
             </div>
           }
         </div>
@@ -99,7 +108,33 @@ import { DraftService } from '../../core/services/draft.service';
         <div class="value">
           @switch (spec.type) {
             @case ('long_text') {
-              <textarea rows="3" [(ngModel)]="draftValue"></textarea>
+              <textarea rows="3" dir="auto" [(ngModel)]="draftValue"></textarea>
+              <div class="translate-row">
+                @if (showFieldTranslate()) {
+                  <button
+                    type="button"
+                    class="translate-btn"
+                    [disabled]="translating()"
+                    (click)="translateField()"
+                    title="Translate the entered Arabic to English"
+                  >
+                    {{ translating() ? 'Translating…' : '🌐 Translate to English' }}
+                  </button>
+                }
+                @if (originalArabic() !== null) {
+                  <button
+                    type="button"
+                    class="translate-btn ghost"
+                    (click)="openCompare()"
+                    title="Open a side-by-side comparison of the original Arabic and the English translation"
+                  >
+                    🔀 Compare original
+                  </button>
+                }
+                @if (translateError()) {
+                  <span class="translate-err">{{ translateError() }}</span>
+                }
+              </div>
             }
             @case ('enum') {
               <select [(ngModel)]="draftValue">
@@ -152,11 +187,46 @@ import { DraftService } from '../../core/services/draft.service';
                 </span>
               }
               <button class="link" (click)="startEdit()">Edit</button>
+              <button class="link audit-link" (click)="toggleAudit()">
+                {{ showAudit() ? 'Hide audit' : 'Audit' }}
+              </button>
             </div>
           }
         </div>
       }
 
+      @if (showAudit() && !isDisabled) {
+        <div class="audit">
+          <table>
+            <thead>
+              <tr><th>Layer</th><th>Value</th><th>User</th><th>Reason</th><th>When</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="layer ai">AI</span></td>
+                <td>{{ fmt(fill?.ai_value) || '—' }}</td>
+                <td>agent</td>
+                <td class="reason">{{ fill?.rationale || '—' }}</td>
+                <td>{{ fill?.ai_filled_at ? (fill?.ai_filled_at | date:'short') : '—' }}</td>
+              </tr>
+              <tr>
+                <td><span class="layer maker">Maker</span></td>
+                <td>{{ fmt(fill?.maker_value) || '—' }}</td>
+                <td>{{ fill?.maker_user_id || '—' }}</td>
+                <td class="reason">{{ fill?.maker_reason || '—' }}</td>
+                <td>{{ fill?.maker_at ? (fill?.maker_at | date:'short') : '—' }}</td>
+              </tr>
+              <tr>
+                <td><span class="layer checker">Checker</span></td>
+                <td>{{ fmt(fill?.checker_value) || '—' }}</td>
+                <td>{{ fill?.checker_user_id || '—' }}</td>
+                <td class="reason">{{ fill?.checker_reason || '—' }}</td>
+                <td>{{ fill?.checker_at ? (fill?.checker_at | date:'short') : '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -278,6 +348,74 @@ import { DraftService } from '../../core/services/draft.service';
     .radio input[type="radio"]:disabled + span {
       color: var(--text-muted);
     }
+
+    .audit-link { margin-left: 12px; }
+
+    .translate-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .translate-btn {
+      background: #eef4ff;
+      color: var(--blue, #2563eb);
+      border: 1px solid #dbeafe;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .translate-btn:hover:not(:disabled) { background: #dbeafe; }
+    .translate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .translate-btn.ghost {
+      background: transparent;
+      border-color: var(--border, #e5e7eb);
+      color: var(--text-soft);
+    }
+    .translate-btn.ghost:hover:not(:disabled) {
+      background: #f3f4f6;
+      color: var(--text);
+    }
+    .translate-err {
+      color: var(--red, #b91c1c);
+      font-size: 12px;
+    }
+    .audit {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .audit table { width: 100%; border-collapse: collapse; }
+    .audit th, .audit td {
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px dashed var(--border, #e5e7eb);
+    }
+    .audit th {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-soft);
+    }
+    .audit tr:last-child td { border-bottom: none; }
+    .audit .layer {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .audit .layer.ai      { background: #ede9fe; color: #6d28d9; }
+    .audit .layer.maker   { background: #dbeafe; color: #1e40af; }
+    .audit .layer.checker { background: #dcfce7; color: #166534; }
+    .audit .reason { max-width: 320px; white-space: pre-wrap; }
   `],
 })
 export class FieldRowComponent {
@@ -288,7 +426,79 @@ export class FieldRowComponent {
   @Input() isDisabled = false;
 
   private drafts = inject(DraftService);
+  private auth = inject(AuthService);
+  private translateApi = inject(TranslateApi);
+  private reasonPrompt = inject(ReasonPromptService);
+  private compare = inject(TranslationCompareService);
   private host = inject(ElementRef<HTMLElement>);
+  translating = signal(false);
+  translateError = signal<string | null>(null);
+  // After a successful translation, stash the original Arabic so the user
+  // can toggle back to it for side-by-side comparison.
+  originalArabic = signal<string | null>(null);
+  showingOriginal = signal(false);
+
+  /** True when the user has typed Arabic in a long_text edit box AND we
+   *  haven't already produced a translation for this content. */
+  showFieldTranslate(): boolean {
+    if (this.spec.type !== 'long_text') return false;
+    const v = this.draftValue;
+    if (typeof v !== 'string' || !containsArabic(v)) return false;
+    return this.originalArabic() === null;
+  }
+
+  /** Open the side-by-side compare modal for this field. If the user clicks
+   *  "Restore original Arabic", swap the editor content back. */
+  async openCompare(): Promise<void> {
+    const orig = this.originalArabic();
+    if (orig === null) return;
+    const cur = typeof this.draftValue === 'string' ? this.draftValue : '';
+    const result = await this.compare.open({
+      title: 'Compare translation',
+      fieldLabel: this.spec.label,
+      original: orig,
+      translated: cur,
+      originalLang: 'ar',
+      translatedLang: 'en',
+    });
+    if (result.kind === 'restore-original') {
+      this.draftValue = orig;
+      this.originalArabic.set(cur);
+      this.showingOriginal.set(true);
+    }
+  }
+
+  async translateField(): Promise<void> {
+    const v = this.draftValue;
+    if (typeof v !== 'string' || !v.trim()) return;
+    this.translating.set(true);
+    this.translateError.set(null);
+    try {
+      const res = await firstValueFrom(this.translateApi.translate(v));
+      if (res.input_lang !== 'en') {
+        this.originalArabic.set(v);
+        this.showingOriginal.set(false);
+      }
+      this.draftValue = res.translated;
+    } catch (e: unknown) {
+      this.translateError.set(this.formatTranslateError(e));
+    } finally {
+      this.translating.set(false);
+    }
+  }
+
+  private formatTranslateError(e: unknown): string {
+    if (e && typeof e === 'object') {
+      const any = e as Record<string, unknown>;
+      const err = any['error'];
+      if (err && typeof err === 'object') {
+        const d = (err as Record<string, unknown>)['detail'];
+        if (typeof d === 'string') return d;
+      }
+      if (typeof any['message'] === 'string') return any['message'] as string;
+    }
+    return `Failed: ${String(e)}`;
+  }
   editing = signal(false);
   flash = signal(false);
   draftValue: unknown = null;
@@ -311,7 +521,80 @@ export class FieldRowComponent {
   async tickSave(v: unknown): Promise<void> {
     if (this.isDisabled) return;
     if (this.fill?.value === v) return; // no-op if already selected
-    await this.drafts.patchField(this.spec.id, v);
+    const reason = await this.askReasonIfOverride(v);
+    if (reason === null) return; // user cancelled
+    try {
+      await this.drafts.patchField(this.spec.id, v, reason || undefined);
+    } catch (e: unknown) {
+      window.alert(this.formatPatchError(e));
+    }
+  }
+
+  /** Show an inline audit drawer when the user clicks "Audit" on a field. */
+  showAudit = signal(false);
+  toggleAudit(): void { this.showAudit.update((v) => !v); }
+
+  /** True when there's already a value (AI, maker, or checker) — used to
+   *  decide whether to prompt for a "reason for change". */
+  hasExistingValue(): boolean {
+    if (!this.fill) return false;
+    const vals = [this.fill.ai_value, this.fill.maker_value, this.fill.checker_value, this.fill.value];
+    return vals.some((v) => v !== undefined && v !== null && v !== '');
+  }
+
+  /** Open the styled reason-prompt modal if we're overriding an existing value.
+   *  Returns the reason string, '' if no prompt was needed (first fill), or
+   *  null if the user cancelled. */
+  private async askReasonIfOverride(newValue: unknown): Promise<string | null> {
+    if (!this.hasExistingValue()) return '';
+    const role = this.auth.role();
+    const isChecker = role === 'checker';
+    const oldEffective = this.fill?.value;
+
+    const suggestions = isChecker
+      ? [
+          'Maker classification not aligned with policy',
+          'Correcting an error introduced by maker',
+          'Aligning with current User Guide definition',
+          'Updating after discussion with Risk Steward',
+        ]
+      : [
+          'AI classification not aligned with the incident',
+          'Updated based on new information',
+          'Correcting a typo / formatting',
+          'Refined per User Guide guidance',
+        ];
+
+    const reason = await this.reasonPrompt.ask({
+      title: isChecker ? 'Checker reason for change' : 'Reason for change',
+      intro: isChecker
+        ? 'You are overriding the maker\'s value. Provide the reason for your change.'
+        : 'You are overriding a previously-filled value. Provide the reason for your change.',
+      fieldLabel: this.spec.label,
+      oldValue: oldEffective,
+      newValue,
+      confirmLabel: 'Save change',
+      minLength: 5,
+      suggestions,
+      placeholder: 'Briefly explain why this change is being made…',
+    });
+    return reason;
+  }
+
+  private formatPatchError(e: unknown): string {
+    if (e && typeof e === 'object') {
+      const any = e as Record<string, unknown>;
+      const err = any['error'];
+      if (err && typeof err === 'object') {
+        const d = (err as Record<string, unknown>)['detail'];
+        if (typeof d === 'string') return d;
+        if (d && typeof d === 'object' && typeof (d as Record<string, unknown>)['message'] === 'string') {
+          return (d as Record<string, unknown>)['message'] as string;
+        }
+      }
+      if (typeof any['message'] === 'string') return any['message'] as string;
+    }
+    return `Save failed: ${String(e)}`;
   }
 
   constructor() {
@@ -342,10 +625,18 @@ export class FieldRowComponent {
   startEdit(): void {
     this.draftValue = this.fill?.value ?? null;
     this.editing.set(true);
+    this.resetTranslationState();
   }
 
   cancel(): void {
     this.editing.set(false);
+    this.resetTranslationState();
+  }
+
+  private resetTranslationState(): void {
+    this.originalArabic.set(null);
+    this.showingOriginal.set(false);
+    this.translateError.set(null);
   }
 
   async save(): Promise<void> {
@@ -353,8 +644,21 @@ export class FieldRowComponent {
     if (this.spec.type === 'number' && typeof v === 'string') {
       v = v === '' ? null : Number(v);
     }
-    await this.drafts.patchField(this.spec.id, v);
-    this.editing.set(false);
+    const reason = await this.askReasonIfOverride(v);
+    if (reason === null) return;
+    try {
+      await this.drafts.patchField(this.spec.id, v, reason || undefined);
+      this.editing.set(false);
+      this.resetTranslationState();
+    } catch (e: unknown) {
+      window.alert(this.formatPatchError(e));
+    }
+  }
+
+  /** Compact value formatter used in the audit drawer. */
+  fmt(v: unknown): string {
+    if (v === null || v === undefined || v === '') return '';
+    return this.formatValue(v);
   }
 
   formatValue(v: unknown): string {

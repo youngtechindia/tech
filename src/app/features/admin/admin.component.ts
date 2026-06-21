@@ -9,8 +9,9 @@ import { IngestResponse } from '../../core/models/contract';
   selector: 'app-admin',
   imports: [CommonModule],
   template: `
-    <div class="card">
-      <h1>Admin</h1>
+    <div class="page-head">
+      <span class="eyebrow">Admin</span>
+      <h1>Administration</h1>
       <p class="soft">
         Tools restricted to admin users. Use with care — re-ingest rebuilds the
         Qdrant collections from <code>data/user_guide.docx</code> and
@@ -60,9 +61,13 @@ import { IngestResponse } from '../../core/models/contract';
     </div>
   `,
   styles: [`
-    h1 { margin: 0 0 8px; font-size: 20px; }
-    h2 { margin: 0 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-soft); }
-    p { margin: 0 0 10px; }
+    .page-head {
+      margin-bottom: var(--space-5);
+    }
+    .page-head h1 { font-size: var(--fs-2xl); margin: var(--space-1) 0 var(--space-2); }
+    .page-head p  { color: var(--text-soft); max-width: 680px; }
+    h2 { margin: 0 0 var(--space-2); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-soft); font-weight: 600; }
+    p  { margin: 0 0 var(--space-2); }
     code {
       font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
       font-size: 12px;

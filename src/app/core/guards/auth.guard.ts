@@ -27,3 +27,23 @@ export const adminGuard: CanActivateFn = () => {
   if (!auth.isAdmin()) return router.parseUrl('/new');
   return true;
 };
+
+/** Maker-only routes (New Report). Bounces to /review for checkers. */
+export const makerGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  if (!auth.isAuthenticated()) return router.parseUrl('/login');
+  if (auth.isMaker()) return true;
+  if (auth.isAdmin()) return true;
+  return router.parseUrl(auth.isChecker() ? '/review' : '/login');
+};
+
+/** Checker-only routes (Review Queue). Bounces to /new for non-checkers. */
+export const checkerGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  if (!auth.isAuthenticated()) return router.parseUrl('/login');
+  if (auth.isChecker()) return true;
+  if (auth.isAdmin()) return true;
+  return router.parseUrl('/new');
+};

@@ -1,34 +1,77 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
+import { containsArabic, TranslateApi } from '../../core/api/translate.api';
 import { DraftService } from '../../core/services/draft.service';
+import { TranslationCompareService } from '../../core/services/translation-compare.service';
 
 @Component({
   selector: 'app-new-report',
   imports: [FormsModule],
   template: `
-    <div class="card">
-      <h1>New Incident Report</h1>
+    <div class="page-head">
+      <span class="eyebrow">New report</span>
+      <h1>Describe the incident</h1>
       <p class="soft">
-        Describe the incident in plain language. The AI assistant will pre-fill
-        the report and ask follow-up questions for anything it isn't sure about.
+        Write a plain-language summary in English or Arabic. The AI assistant
+        will pre-fill the report and ask follow-up questions for anything it
+        isn't sure about.
       </p>
+    </div>
+
+    <div class="card">
       <textarea
         rows="14"
+        dir="auto"
         [(ngModel)]="description"
         placeholder="On 03/05/2026 at 14:22, the Riyadh HQ Cards team discovered..."
       ></textarea>
       <div class="actions">
         <span class="soft hint">{{ description().length }} chars</span>
+        <span class="grow"></span>
+        @if (originalArabic() !== null) {
+          <button
+            type="button"
+            class="translate-btn ghost"
+            (click)="openCompare()"
+            title="Open a side-by-side comparison of the original Arabic and the English translation"
+          >
+            🔀 Compare original
+          </button>
+        }
+        @if (showTranslate()) {
+          <button
+            type="button"
+            class="translate-btn"
+            [disabled]="translating() || description().trim().length === 0"
+            (click)="translate()"
+            title="Translate Arabic text to English. The final report must be in English."
+          >
+            {{ translating() ? 'Translating…' : '🌐 Translate to English' }}
+          </button>
+        }
         <button
           class="primary"
-          [disabled]="description().trim().length < 30 || submitting()"
+          [disabled]="description().trim().length < 30 || submitting() || hasArabic()"
+          [title]="hasArabic()
+            ? 'Translate the description to English before generating the draft. The final report must be in English.'
+            : null"
           (click)="submit()"
         >
           {{ submitting() ? 'Starting...' : 'Generate Draft' }}
         </button>
       </div>
+      @if (hasArabic()) {
+        <p class="block-arabic">
+          ✦ Translate the description to English before generating the draft —
+          the final report must be in English.
+        </p>
+      }
+      @if (translateError()) {
+        <p class="error">{{ translateError() }}</p>
+      }
       @if (error()) {
         <p class="error">{{ error() }}</p>
       }
@@ -93,16 +136,57 @@ import { DraftService } from '../../core/services/draft.service';
     </div>
   `,
   styles: [`
-    h1 { margin: 0 0 8px; font-size: 20px; }
-    p { margin: 0 0 12px; }
+    .page-head {
+      margin-bottom: var(--space-5);
+    }
+    .page-head h1 {
+      font-size: var(--fs-2xl);
+      margin: var(--space-1) 0 var(--space-2);
+    }
+    .page-head p {
+      color: var(--text-soft);
+      max-width: 640px;
+    }
     .actions {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-top: 12px;
+      gap: var(--space-3);
+      margin-top: var(--space-4);
     }
+    .grow { flex: 1 1 auto; }
     .hint { font-size: 12px; }
     .error { color: var(--red); margin-top: 12px; }
+
+    .block-arabic {
+      margin-top: var(--space-3);
+      padding: 10px 14px;
+      background: var(--amber-soft);
+      border-left: 3px solid var(--amber);
+      border-radius: var(--radius);
+      color: #78350f;
+      font-size: var(--fs-sm);
+      line-height: 1.5;
+    }
+    .translate-btn {
+      background: #eef4ff;
+      color: var(--blue, #2563eb);
+      border: 1px solid #dbeafe;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .translate-btn:hover:not(:disabled) { background: #dbeafe; }
+    .translate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .translate-btn.ghost {
+      background: transparent;
+      border-color: var(--border, #e5e7eb);
+      color: var(--text-soft);
+    }
+    .translate-btn.ghost:hover:not(:disabled) {
+      background: #f3f4f6;
+      color: var(--text);
+    }
 
     .guidelines {
       margin-top: 16px;
@@ -162,10 +246,85 @@ import { DraftService } from '../../core/services/draft.service';
 export class NewReportComponent {
   private drafts = inject(DraftService);
   private router = inject(Router);
+  private translateApi = inject(TranslateApi);
+  private compare = inject(TranslationCompareService);
 
   description = signal('');
   submitting = signal(false);
   error = signal<string | null>(null);
+  translating = signal(false);
+  translateError = signal<string | null>(null);
+
+  // After a successful Arabic→English translation we stash the original
+  // Arabic so the user can toggle back to it for side-by-side comparison.
+  originalArabic = signal<string | null>(null);
+  showingOriginal = signal(false);
+
+  /** Show the Translate button only when the input contains Arabic AND we
+   *  haven't already translated this content (avoid double-translation). */
+  showTranslate = computed(() =>
+    containsArabic(this.description()) && this.originalArabic() === null,
+  );
+
+  /** Final reports must be in English. Block Generate Draft while the
+   *  description still contains any Arabic characters. */
+  hasArabic = computed(() => containsArabic(this.description()));
+
+  /** Open the side-by-side compare modal. If the user clicks
+   *  "Restore original Arabic", swap the textarea content back. */
+  async openCompare(): Promise<void> {
+    const orig = this.originalArabic();
+    if (orig === null) return;
+    const result = await this.compare.open({
+      title: 'Compare translation',
+      intro: 'Review the Arabic you entered alongside the English translation before submitting.',
+      original: orig,
+      translated: this.description(),
+      originalLang: 'ar',
+      translatedLang: 'en',
+    });
+    if (result.kind === 'restore-original') {
+      const currentTranslation = this.description();
+      this.description.set(orig);
+      this.originalArabic.set(currentTranslation);
+      this.showingOriginal.set(true);
+    }
+  }
+
+  async translate(): Promise<void> {
+    const text = this.description().trim();
+    if (!text) return;
+    this.translating.set(true);
+    this.translateError.set(null);
+    try {
+      const res = await firstValueFrom(this.translateApi.translate(text));
+      // Only stash + offer the toggle when the BE actually performed a
+      // translation (input was detected as ar / unknown). For pure-English
+      // pass-through there's nothing to compare against.
+      if (res.input_lang !== 'en') {
+        this.originalArabic.set(text);
+        this.showingOriginal.set(false);
+      }
+      this.description.set(res.translated);
+    } catch (e: unknown) {
+      this.translateError.set(`Translation failed: ${this.formatError(e)}`);
+    } finally {
+      this.translating.set(false);
+    }
+  }
+
+  private formatError(e: unknown): string {
+    if (e && typeof e === 'object') {
+      const any = e as Record<string, unknown>;
+      const err = any['error'];
+      if (err && typeof err === 'object') {
+        const d = (err as Record<string, unknown>)['detail'];
+        if (typeof d === 'string') return d;
+      }
+      if (typeof any['message'] === 'string') return any['message'] as string;
+    }
+    return String(e);
+  }
 
   async submit(): Promise<void> {
     this.submitting.set(true);

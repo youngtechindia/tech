@@ -1,88 +1,332 @@
-/* Global tokens + reset */
-:root {
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --border: #e4e7ec;
-  --text: #1a1d22;
-  --text-soft: #5b6573;
-  --text-muted: #8a93a0;
+/* ============================================================
+   Incident Report AI Assistant — Design Tokens & Global Styles
+   Enterprise-feel: restrained palette, generous spacing, refined
+   typography, subtle elevation.
+   ============================================================ */
 
-  --blue: #2563eb;
-  --blue-soft: #dbe9ff;
-  --green: #16a34a;
-  --green-soft: #d3f9d8;
-  --amber: #d97706;
-  --amber-soft: #fff3bf;
-  --red: #dc2626;
-  --red-soft: #ffd6d6;
-  --purple: #7c3aed;
-  --purple-soft: #ece5ff;
+:root {
+  /* ---- Color palette ---- */
+  --bg:           #f4f6fa;
+  --bg-soft:      #eef1f6;
+  --surface:      #ffffff;
+  --surface-2:    #f8fafc;
+  --surface-3:    #f1f5f9;
+  --border:       #e2e8f0;
+  --border-soft:  #edf0f5;
+  --border-strong:#cbd5e1;
+
+  --text:         #0f172a;
+  --text-soft:    #475569;
+  --text-muted:   #94a3b8;
+  --text-inverse: #f8fafc;
+
+  /* ---- Brand / accent ---- */
+  --brand:        #1e3a8a;      /* deep navy — SABB-feel */
+  --brand-strong: #1e40af;
+  --brand-soft:   #eef2ff;
+  --brand-mid:    #c7d2fe;
+
+  /* ---- Action / status ---- */
+  --blue:         #2563eb;
+  --blue-strong:  #1d4ed8;
+  --blue-soft:    #dbeafe;
+  --green:        #15803d;
+  --green-soft:   #dcfce7;
+  --amber:        #b45309;
+  --amber-soft:   #fef3c7;
+  --red:          #b91c1c;
+  --red-soft:     #fee2e2;
+  --purple:       #6d28d9;
+  --purple-soft:  #ede9fe;
+
+  /* ---- Typography ---- */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
+               monospace;
+
+  --fs-xs:   11px;
+  --fs-sm:   12.5px;
+  --fs-base: 14px;
+  --fs-md:   15px;
+  --fs-lg:   17px;
+  --fs-xl:   20px;
+  --fs-2xl:  24px;
+  --fs-3xl:  30px;
+
+  /* ---- Spacing scale ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 56px;
+
+  /* ---- Radii ---- */
+  --radius-sm: 4px;
+  --radius:    6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* ---- Elevation ---- */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+  --shadow-focus: 0 0 0 3px rgba(37, 99, 235, 0.18);
+
+  /* ---- Layout ---- */
+  --topbar-height: 64px;
+  --content-max:   1280px;
 }
 
-* {
+/* ============================================================
+   Reset + base
+   ============================================================ */
+
+*, *::before, *::after {
   box-sizing: border-box;
 }
+
 html, body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, sans-serif;
-  font-size: 14px;
-  line-height: 1.45;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
   background: var(--bg);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
+
+body {
+  background:
+    radial-gradient(at 0% 0%, rgba(199, 210, 254, 0.35) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(216, 224, 247, 0.30) 0px, transparent 50%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+p { margin: 0; }
+
+a {
+  color: var(--blue);
+  text-decoration: none;
+  transition: color 0.12s ease;
+}
+a:hover { color: var(--blue-strong); }
+
+code, kbd, samp {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
 
 button {
   cursor: pointer;
   font: inherit;
-  border: 1px solid var(--border);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text);
   background: var(--surface);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 8px 14px;
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.12s ease, border-color 0.12s ease,
+              color 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;
+  outline: none;
 }
-button:hover:not(:disabled) {
-  background: #f0f2f5;
-}
-button.primary {
-  background: var(--blue);
-  color: #fff;
+button:focus-visible {
+  box-shadow: var(--shadow-focus);
   border-color: var(--blue);
 }
-button.primary:hover:not(:disabled) {
-  background: #1d4ed8;
+button:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
+button.primary {
+  background: linear-gradient(180deg, #2563eb 0%, #1e40af 100%);
+  color: var(--text-inverse);
+  border-color: var(--brand-strong);
+  box-shadow: var(--shadow-sm);
+}
+button.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #1d4ed8 0%, #1e3a8a 100%);
+  border-color: var(--brand);
+}
+button.primary:focus-visible {
+  box-shadow: var(--shadow-focus), var(--shadow-sm);
+}
+
+button.danger {
+  background: var(--red-soft);
+  color: var(--red);
+  border-color: #fecaca;
+}
+button.danger:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+button.ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-soft);
+}
+button.ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--blue);
+  font-weight: 500;
+  font-size: var(--fs-sm);
+  box-shadow: none !important;
+}
+button.link:hover:not(:disabled) {
+  text-decoration: underline;
+  background: transparent;
+  color: var(--blue-strong);
+}
+
+/* ============================================================
+   Form controls
+   ============================================================ */
+
 input, textarea, select {
   font: inherit;
-  color: inherit;
+  font-size: var(--fs-base);
+  color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
+  border-radius: var(--radius);
+  padding: 9px 12px;
   width: 100%;
+  outline: none;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease,
+              background 0.12s ease;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--text-muted);
+}
+input:hover, textarea:hover, select:hover {
+  border-color: var(--border-strong);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--blue);
+  box-shadow: var(--shadow-focus);
 }
 textarea {
   resize: vertical;
-  min-height: 60px;
+  min-height: 80px;
+  line-height: 1.55;
 }
+input:disabled, textarea:disabled, select:disabled {
+  background: var(--surface-3);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3e%3cpath d='M3 5l3 3 3-3' stroke='%23475569' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
+input[type="checkbox"], input[type="radio"] {
+  width: auto;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+/* ============================================================
+   Containers
+   ============================================================ */
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
+  box-shadow: var(--shadow-xs);
 }
 
-.row {
-  display: flex;
-  gap: 12px;
-}
+.row { display: flex; gap: var(--space-3); }
 
 .muted { color: var(--text-muted); }
 .soft  { color: var(--text-soft); }
+
+/* Utility for small caps section labels */
+.eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+/* Generic table reset */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+th {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  background: var(--surface-2);
+}
+tbody tr:hover { background: var(--surface-2); }
+tbody tr:last-child td { border-bottom: none; }
+
+/* Focus outline reset (use box-shadow rings instead) */
+:focus { outline: none; }
+
+/* Scrollbar (subtle) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); border: 2px solid transparent; background-clip: padding-box; }

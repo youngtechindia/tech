@@ -146,6 +146,13 @@ export class DraftService {
   async loadDraft(id: string): Promise<Draft> {
     const draft = await firstValueFrom(this.api.getDraft(id));
     this._draft.set(draft);
+    // If the BE says this draft is still running but we don't have a live
+    // SSE subscription (typical after a page refresh), reattach. The BE
+    // detects the in-flight run, replays all past events to us immediately,
+    // then continues streaming live events as they fire.
+    if (draft.status === 'running' && this._activeSub === null) {
+      this.startRun(id);
+    }
     return draft;
   }
 
@@ -353,21 +360,21 @@ export class DraftService {
   }
 
   // ---- manual edit + finalize ----
-  async patchField(fieldId: string, value: unknown): Promise<void> {
+  async patchField(fieldId: string, value: unknown, reason?: string): Promise<void> {
     const cur = this._draft();
     if (!cur) return;
     const updated = await firstValueFrom(
-      this.api.patchFields(cur.draft_id, { updates: { [fieldId]: { value } } }),
+      this.api.patchFields(cur.draft_id, { updates: { [fieldId]: { value, reason } } }),
     );
     this._draft.set(updated);
   }
 
-  async patchManyFields(updates: Record<string, unknown>): Promise<void> {
+  async patchManyFields(updates: Record<string, unknown>, reason?: string): Promise<void> {
     const cur = this._draft();
     if (!cur) return;
     const body = {
       updates: Object.fromEntries(
-        Object.entries(updates).map(([k, v]) => [k, { value: v }]),
+        Object.entries(updates).map(([k, v]) => [k, { value: v, reason }]),
       ),
     };
     const updated = await firstValueFrom(this.api.patchFields(cur.draft_id, body));
@@ -378,6 +385,31 @@ export class DraftService {
     const cur = this._draft();
     if (!cur) throw new Error('no active draft');
     const updated = await firstValueFrom(this.api.finalizeDraft(cur.draft_id));
+    this._draft.set(updated);
+    return updated;
+  }
+
+  // ---- workflow (maker/checker) ----
+  async submitForReview(): Promise<Draft> {
+    const cur = this._draft();
+    if (!cur) throw new Error('no active draft');
+    const updated = await firstValueFrom(this.api.submitForReview(cur.draft_id));
+    this._draft.set(updated);
+    return updated;
+  }
+
+  async approveDraft(): Promise<Draft> {
+    const cur = this._draft();
+    if (!cur) throw new Error('no active draft');
+    const updated = await firstValueFrom(this.api.approveDraft(cur.draft_id));
+    this._draft.set(updated);
+    return updated;
+  }
+
+  async rejectDraft(reason: string): Promise<Draft> {
+    const cur = this._draft();
+    if (!cur) throw new Error('no active draft');
+    const updated = await firstValueFrom(this.api.rejectDraft(cur.draft_id, reason));
     this._draft.set(updated);
     return updated;
   }

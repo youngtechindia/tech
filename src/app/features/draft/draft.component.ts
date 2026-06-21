@@ -60,49 +60,65 @@ type RenderBlock =
   styles: [`
     .layout {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 360px;
-      gap: 24px;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: var(--space-6);
       align-items: start;
     }
     @media (max-width: 1100px) {
       .layout { grid-template-columns: 1fr; }
     }
+    .desc-card {
+      box-shadow: var(--shadow-sm);
+    }
     .desc-card h2 {
-      margin: 0 0 8px;
-      font-size: 13px;
+      margin: 0 0 var(--space-2);
+      font-size: var(--fs-xs);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.6px;
       color: var(--text-soft);
+      font-weight: 600;
     }
     .desc {
       margin: 0;
       white-space: pre-wrap;
       color: var(--text-soft);
+      line-height: 1.6;
     }
     .section {
       padding: 0;
-      margin-top: 16px;
+      margin-top: var(--space-4);
       overflow: hidden;
+      box-shadow: var(--shadow-xs);
     }
     .section-head {
-      padding: 12px 14px;
+      padding: 12px var(--space-5);
       font-weight: 600;
-      background: #f9fafb;
+      font-size: var(--fs-md);
+      color: var(--text);
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
     }
     .group-head {
-      margin-top: 28px;
-      margin-bottom: -4px;
-      padding: 10px 14px;
-      font-size: 14px;
+      margin-top: var(--space-7);
+      margin-bottom: -8px;
+      padding: 12px var(--space-5);
+      font-size: var(--fs-xs);
       font-weight: 700;
-      letter-spacing: 0.3px;
-      color: var(--text);
-      background: linear-gradient(180deg, #eef2ff 0%, #f5f7fb 100%);
-      border-left: 4px solid var(--blue, #2563eb);
-      border-radius: 6px 6px 0 0;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--brand);
+      background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+      border: 1px solid var(--brand-mid);
+      border-bottom: none;
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      box-shadow: var(--shadow-xs);
     }
-    /* Sections that follow a group head sit flush under it */
-    .group-head + .section { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+    .group-head + .section {
+      margin-top: 0;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      border-top: none;
+    }
   `],
 })
 export class DraftComponent implements OnInit {

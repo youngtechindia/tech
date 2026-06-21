@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { adminGuard, authGuard, guestGuard } from './core/guards/auth.guard';
+import { adminGuard, authGuard, checkerGuard, guestGuard, makerGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'new' },
@@ -12,9 +12,15 @@ export const routes: Routes = [
   },
   {
     path: 'new',
-    canActivate: [authGuard],
+    canActivate: [makerGuard],
     loadComponent: () =>
       import('./features/new/new.component').then((m) => m.NewReportComponent),
+  },
+  {
+    path: 'review',
+    canActivate: [checkerGuard],
+    loadComponent: () =>
+      import('./features/review/review.component').then((m) => m.ReviewQueueComponent),
   },
   {
     path: 'draft/:id',
